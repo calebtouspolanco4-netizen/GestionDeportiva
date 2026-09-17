@@ -1,0 +1,288 @@
+@model GestionDeportiva.ViewModels.HomeViewModel
+@{
+    ViewData["Title"] = "Inicio";
+    var hoy = DateTime.Now;
+}
+
+<!-- TOP BAR -->
+<div class="dash-topbar">
+    <div>
+        <div class="dash-welcome">¡Bienvenido, Administrador! 👋</div>
+        <div class="dash-sub">Gestiona tus reservas y escenarios deportivos</div>
+    </div>
+    <div class="dash-topbar-right">
+        <div class="notif-btn">
+            <i class="fa-solid fa-bell"></i>
+            <span class="notif-badge">3</span>
+        </div>
+        <div class="date-chip">
+            <i class="fa-regular fa-calendar"></i>
+            <span id="dateDisplay">@hoy.ToString("d 'de' MMMM 'de' yyyy", new System.Globalization.CultureInfo("es-CO"))</span>
+            &nbsp;
+            <span id="timeDisplay">@hoy.ToString("hh:mm tt")</span>
+        </div>
+    </div>
+</div>
+
+<!-- METRIC CARDS -->
+<div class="metrics-grid">
+    <div class="metric-card">
+        <div class="metric-header">
+            <span class="metric-label">Reservas Hoy</span>
+            <div class="metric-icon mi-yellow"><i class="fa-regular fa-calendar-check"></i></div>
+        </div>
+        <div class="metric-value">@Model.ReservasHoy</div>
+        <div class="metric-change @(Model.PorcentajeCambioReservas >= 0 ? "change-up" : "change-down")">
+            <i class="fa-solid @(Model.PorcentajeCambioReservas >= 0 ? "fa-arrow-up" : "fa-arrow-down")"></i>
+            @Math.Abs(Model.PorcentajeCambioReservas)% vs ayer
+        </div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-header">
+            <span class="metric-label">Clientes Activos</span>
+            <div class="metric-icon mi-green"><i class="fa-solid fa-users"></i></div>
+        </div>
+        <div class="metric-value">@Model.ClientesActivos</div>
+        <div class="metric-change change-up">
+            <i class="fa-solid fa-arrow-up"></i> 15% vs mes pasado
+        </div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-header">
+            <span class="metric-label">Escenarios</span>
+            <div class="metric-icon mi-blue"><i class="fa-solid fa-table-cells-large"></i></div>
+        </div>
+        <div class="metric-value">@Model.TotalEscenarios</div>
+        <div class="metric-change change-neutral">
+            <i class="fa-solid fa-circle-check" style="color:var(--green)"></i>
+            <span style="color:var(--green)">@Model.EscenariosDisponibles Disponibles</span>
+        </div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-header">
+            <span class="metric-label">Ingresos Hoy</span>
+            <div class="metric-icon mi-purple"><i class="fa-solid fa-dollar-sign"></i></div>
+        </div>
+        <div class="metric-value" style="font-size:22px;">$@Model.IngresosHoy.ToString("N0")</div>
+        <div class="metric-change @(Model.PorcentajeCambioIngresos >= 0 ? "change-up" : "change-down")">
+            <i class="fa-solid @(Model.PorcentajeCambioIngresos >= 0 ? "fa-arrow-up" : "fa-arrow-down")"></i>
+            @Math.Abs(Model.PorcentajeCambioIngresos)% vs ayer
+        </div>
+    </div>
+</div>
+
+<!-- MAIN GRID -->
+<div class="dash-main-grid">
+
+    <!-- LEFT COLUMN -->
+    <div>
+        <!-- Reservas del día -->
+        <div class="card" style="margin-bottom:18px;">
+            <div class="section-header">
+                <div class="section-title">Reservas del día</div>
+                <a asp-controller="Calendario" asp-action="Index" class="section-link">
+                    Ver calendario completo <i class="fa-solid fa-arrow-right"></i>
+                </a>
+            </div>
+
+            @if (!Model.ReservasDelDia.Any())
+            {
+                <div style="text-align:center;padding:30px;color:var(--text-secondary);">
+                    <i class="fa-regular fa-calendar-xmark" style="font-size:32px;margin-bottom:10px;display:block;"></i>
+                    No hay reservas para hoy
+                </div>
+            }
+            else
+            {
+                @foreach (var r in Model.ReservasDelDia.Take(5))
+                {
+                    var estadoClass = r.EstadoNombre switch {
+                        "Confirmada" => "badge-green",
+                        "Pendiente"  => "badge-orange",
+                        "Cancelada"  => "badge-red",
+                        _            => "badge-gray"
+                    };
+                    <div class="reserva-item">
+                        <div class="res-time">
+                            <span class="t-start">@r.HoraInicio</span>
+                            <span class="t-end">@r.HoraFin</span>
+                        </div>
+                        <div class="res-icon">
+                            <i class="fa-solid fa-futbol"></i>
+                        </div>
+                        <div class="res-info">
+                            <div class="res-esc">@r.NombreEscenario</div>
+                            <div class="res-cli">@r.NombreCliente &nbsp;·&nbsp; @r.Telefono</div>
+                        </div>
+                        <div class="res-actions">
+                            <span class="badge @estadoClass">@r.EstadoNombre</span>
+                            <button class="menu-btn"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                        </div>
+                    </div>
+                }
+
+                @if (Model.ReservasDelDia.Count > 5)
+                {
+                    <a asp-controller="Reservas" asp-action="Index" class="ver-todo-link">
+                        Ver todas las reservas <i class="fa-solid fa-arrow-right"></i>
+                    </a>
+                }
+            }
+        </div>
+
+        <!-- Acciones rápidas -->
+        <div class="card">
+            <div class="section-title" style="margin-bottom:14px;">Acciones rápidas</div>
+            <div class="quick-actions">
+                <a asp-controller="Reservas" asp-action="Crear" class="qa-btn">
+                    <div class="qa-icon yellow"><i class="fa-regular fa-calendar-plus"></i></div>
+                    <span class="qa-label">Nueva reserva</span>
+                </a>
+                <a asp-controller="Escenarios" asp-action="Index" class="qa-btn">
+                    <div class="qa-icon green"><i class="fa-solid fa-table-cells-large"></i></div>
+                    <span class="qa-label">Ver escenarios</span>
+                </a>
+                <a asp-controller="Clientes" asp-action="Crear" class="qa-btn">
+                    <div class="qa-icon blue"><i class="fa-solid fa-user-plus"></i></div>
+                    <span class="qa-label">Nuevo cliente</span>
+                </a>
+                <a asp-controller="Pagos" asp-action="Registrar" class="qa-btn">
+                    <div class="qa-icon purple"><i class="fa-solid fa-receipt"></i></div>
+                    <span class="qa-label">Registrar pago</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div>
+        <!-- Escenario destacado -->
+        <div class="card" style="margin-bottom:18px;">
+            <div class="section-title" style="margin-bottom:12px;">Escenario destacado</div>
+
+            @if (Model.EscenarioDestacado != null)
+            {
+                @if (!string.IsNullOrWhiteSpace(Model.EscenarioDestacado.UrlImagen))
+                {
+                    <img src="@Model.EscenarioDestacado.UrlImagen" alt="@Model.EscenarioDestacado.Nombre" class="esc-dest-img" />
+                }
+                else
+                {
+                    <div class="esc-dest-placeholder">
+                        <i class="fa-solid fa-futbol"></i>
+                    </div>
+                }
+                <div class="esc-dest-header">
+                    <span class="esc-dest-name">@Model.EscenarioDestacado.Nombre</span>
+                    <span class="badge badge-green">Disponible</span>
+                </div>
+                <div class="esc-dest-meta">
+                    <span><i class="fa-solid fa-futbol"></i> @Model.EscenarioDestacado.Deporte?.Nombre</span>
+                    <span><i class="fa-regular fa-clock"></i> 110min x partido</span>
+                </div>
+                <a asp-controller="Reservas" asp-action="Crear" class="btn-reservar">
+                    <i class="fa-regular fa-calendar-check"></i> Reservar ahora
+                </a>
+            }
+            else
+            {
+                <div style="text-align:center;padding:20px;color:var(--text-secondary);">
+                    Sin escenarios disponibles
+                </div>
+            }
+
+            <!-- Resumen del día -->
+            <div style="border-top:1px solid var(--border);padding-top:16px;">
+                <div class="section-title" style="margin-bottom:12px;">Resumen del día</div>
+                <div class="resumen-wrap">
+                    <div class="resumen-donut">
+                        <canvas id="resumenChart"></canvas>
+                        <div class="resumen-center">
+                            <span class="resumen-center-num">@Model.ReservasHoy</span>
+                            <span class="resumen-center-text">Reservas</span>
+                        </div>
+                    </div>
+                    <div class="resumen-legend">
+                        @{
+                            int total = Math.Max(1, Model.ReservasHoy);
+                            var items = new[]
+                            {
+                                ("Confirmadas", Model.ReservasConfirmadas, "#22c55e"),
+                                ("Pendientes",  Model.ReservasPendientes,  "#f59e0b"),
+                                ("Canceladas",  Model.ReservasCanceladas,  "#ef4444"),
+                                ("Disponibles", Model.ReservasDisponibles, "#3b82f6"),
+                            };
+                        }
+                        @foreach (var (label, cnt, color) in items)
+                        {
+                            <div class="resumen-legend-item">
+                                <div class="resumen-legend-left">
+                                    <div class="resumen-dot" style="background:@color"></div>
+                                    <span>@label</span>
+                                </div>
+                                <span class="resumen-pct">
+                                    @cnt (@(Math.Round((decimal)cnt / total * 100, 0))%)
+                                </span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- App Banner -->
+        <div class="app-banner">
+            <div class="app-banner-logo">
+                <i class="fa-solid fa-mobile-screen-button" style="color:#1a1d24;"></i>
+            </div>
+            <div class="app-banner-text">
+                <div class="app-banner-title">Lleva tu negocio al siguiente nivel</div>
+                <div class="app-banner-sub">Descarga nuestra app y gestiona tus reservas desde cualquier lugar.</div>
+            </div>
+            <button class="btn-primary" style="white-space:nowrap;font-size:12px;padding:8px 14px;">
+                <i class="fa-solid fa-download"></i> Descargar
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Donut chart — Resumen del día
+    const ctx = document.getElementById('resumenChart');
+    if (ctx) {
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Confirmadas', 'Pendientes', 'Canceladas', 'Disponibles'],
+                datasets: [{
+                    data: [@Model.ReservasConfirmadas, @Model.ReservasPendientes, @Model.ReservasCanceladas, @Model.ReservasDisponibles],
+                    backgroundColor: ['#22c55e', '#f59e0b', '#ef4444', '#3b82f6'],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                cutout: '72%',
+                plugins: { legend: { display: false }, tooltip: { callbacks: {
+                    label: (c) => ` ${c.label}: ${c.raw}`
+                }}},
+                animation: { animateRotate: true, duration: 800 }
+            }
+        });
+    }
+
+    // Live clock
+    function tick() {
+        const d = new Date();
+        const h = d.getHours().toString().padStart(2,'0');
+        const m = d.getMinutes().toString().padStart(2,'0');
+        const ampm = d.getHours() >= 12 ? 'PM' : 'AM';
+        const h12 = ((d.getHours() % 12) || 12).toString().padStart(2,'0');
+        const el = document.getElementById('timeDisplay');
+        if (el) el.textContent = `${h12}:${m} ${ampm}`;
+    }
+    tick();
+    setInterval(tick, 30000);
+</script>
+}

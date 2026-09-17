@@ -1,0 +1,98 @@
+@model GestionDeportiva.ViewModels.CalendarioViewModel
+@{
+    ViewData["Title"] = "Calendario";
+    var semanaOffset = (int)(ViewBag.SemanaOffset ?? 0);
+    var diasNombres = new[] { "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom" };
+    var horas = Enumerable.Range(8, 15).ToList(); // 08:00 – 22:00
+}
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Calendario</h1>
+        <p class="page-subtitle">Visualiza la disponibilidad de las canchas</p>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+        <div class="btn-icon"><i class="fa-regular fa-calendar"></i></div>
+        <div class="btn-icon"><i class="fa-solid fa-chevron-down" style="font-size:11px;"></i></div>
+    </div>
+</div>
+
+<!-- CALENDAR TOOLBAR -->
+<div class="cal-toolbar">
+    <a href="?semana=@(semanaOffset - 1)" class="btn-icon" title="Semana anterior">
+        <i class="fa-solid fa-chevron-left" style="font-size:11px;"></i>
+    </a>
+    <a href="?semana=0" class="btn-secondary" style="padding:8px 14px;font-size:13px;">Hoy</a>
+    <span class="cal-week-label">
+        @Model.FechaInicio.ToString("d 'de' MMMM", new System.Globalization.CultureInfo("es-CO"))
+        – @Model.FechaFin.ToString("d 'de' MMMM 'de' yyyy", new System.Globalization.CultureInfo("es-CO"))
+    </span>
+    <div class="cal-toggle">
+        <button class="cal-toggle-btn active">Semana</button>
+        <button class="cal-toggle-btn">Max</button>
+    </div>
+    <a href="?semana=@(semanaOffset + 1)" class="btn-icon" title="Semana siguiente">
+        <i class="fa-solid fa-chevron-right" style="font-size:11px;"></i>
+    </a>
+</div>
+
+<!-- CALENDAR GRID -->
+<div class="calendar-wrap">
+    <div class="cal-grid">
+        <!-- Header row -->
+        <div class="cal-header-cell">Hora</div>
+        @for (int d = 0; d < 7; d++)
+        {
+            var dia = Model.DiasDelaSemana[d];
+            <div class="cal-header-cell">
+                <span class="day-name">@diasNombres[d]</span>
+                <span class="day-date">@dia.ToString("dd/MM")</span>
+            </div>
+        }
+
+        <!-- Hour rows -->
+        @foreach (var hora in horas)
+        {
+            <div class="cal-time-cell">@hora.ToString("00"):00</div>
+            @for (int d = 0; d < 7; d++)
+            {
+                var celda = Model.Reservas
+                    .Where(r => r.DiaSemana == d && r.HoraInicioInt == hora)
+                    .ToList();
+
+                <div class="cal-day-cell">
+                    @foreach (var r in celda)
+                    {
+                        <div class="cal-event @r.Estado" title="@r.NombreEscenario — @r.NombreCliente">
+                            <strong>@r.HoraInicio – @r.HoraFin</strong><br/>
+                            @{
+                                var partes = r.NombreCliente.Split(' ');
+                                var inicial = partes.Length > 1
+                                    ? $"{partes[0]} {partes[1][0]}."
+                                    : r.NombreCliente;
+                            }
+                            @inicial
+                        </div>
+                    }
+                </div>
+            }
+        }
+    </div>
+
+    <!-- LEGEND -->
+    <div class="cal-legend">
+        <div class="legend-item">
+            <div class="legend-dot confirmada"></div> Confirmada
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot pendiente"></div> Pendiente
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot cancelada"></div> Cancelada
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot disponible"></div> Disponible
+        </div>
+    </div>
+</div>

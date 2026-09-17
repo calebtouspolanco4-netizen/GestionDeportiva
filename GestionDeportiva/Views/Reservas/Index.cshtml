@@ -1,0 +1,754 @@
+@model GestionDeportiva.ViewModels.ReservasIndexViewModel
+@{
+    ViewData["Title"] = "Reservas";
+}
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Reservas</h1>
+        <p class="page-subtitle">Gestiona y programa el uso de las canchas deportivas</p>
+    </div>
+    <div class="page-header-actions">
+        <button class="btn-primary" onclick="abrirModalNuevaReserva()">
+            <i class="fa-solid fa-plus"></i> Nueva reserva
+        </button>
+    </div>
+</div>
+
+<!-- METRIC CARDS -->
+<div class="metrics-grid">
+    <div class="metric-card">
+        <div class="metric-header">
+            <span class="metric-label">Total Reservas</span>
+            <div class="metric-icon mi-yellow"><i class="fa-regular fa-calendar-check"></i></div>
+        </div>
+        <div class="metric-value">@Model.TotalReservas</div>
+        <div class="metric-change change-neutral">
+            <span>Histórico en el sistema</span>
+        </div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-header">
+            <span class="metric-label">Confirmadas</span>
+            <div class="metric-icon mi-green"><i class="fa-solid fa-circle-check"></i></div>
+        </div>
+        <div class="metric-value" style="color:var(--green);">@Model.ReservasConfirmadas</div>
+        <div class="metric-change change-up">
+            <span>Listas para jugar</span>
+        </div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-header">
+            <span class="metric-label">Pendientes de Pago</span>
+            <div class="metric-icon mi-purple"><i class="fa-regular fa-clock"></i></div>
+        </div>
+        <div class="metric-value" style="color:var(--orange);">@Model.ReservasPendientes</div>
+        <div class="metric-change change-neutral">
+            <span>Sin abono o confirmación</span>
+        </div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-header">
+            <span class="metric-label">Canceladas</span>
+            <div class="metric-icon mi-blue"><i class="fa-solid fa-ban"></i></div>
+        </div>
+        <div class="metric-value" style="color:var(--red);">@Model.ReservasCanceladas</div>
+        <div class="metric-change change-down">
+            <span>Canceladas / anuladas</span>
+        </div>
+    </div>
+</div>
+
+<!-- SEARCH & FILTERS -->
+<form method="get" asp-controller="Reservas" asp-action="Index" style="margin-bottom:20px;">
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+        <div class="search-wrap" style="flex:1;min-width:200px;">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input class="search-input" type="text" name="busqueda"
+                   value="@Model.Busqueda" placeholder="Buscar por cliente, teléfono o # reserva..." />
+        </div>
+
+        <div style="width:160px;">
+            <input type="date" name="fecha" value="@Model.Fecha" class="form-control-dark" style="padding:9px 12px;" />
+        </div>
+
+        <div style="width:180px;">
+            <select name="escenarioId" class="form-control-dark" style="padding:9px 12px;">
+                <option value="">Todas las canchas</option>
+                @foreach (var esc in Model.Escenarios)
+                {
+                    if (Model.EscenarioId == esc.EscenarioId)
+                    {
+                        <option value="@esc.EscenarioId" selected>@esc.Nombre</option>
+                    }
+                    else
+                    {
+                        <option value="@esc.EscenarioId">@esc.Nombre</option>
+                    }
+                }
+            </select>
+        </div>
+
+        <div style="width:170px;">
+            <select name="estadoId" class="form-control-dark" style="padding:9px 12px;">
+                <option value="">Todos los estados</option>
+                @foreach (var est in Model.Estados)
+                {
+                    if (Model.EstadoId == est.EstadoId)
+                    {
+                        <option value="@est.EstadoId" selected>@est.Nombre</option>
+                    }
+                    else
+                    {
+                        <option value="@est.EstadoId">@est.Nombre</option>
+                    }
+                }
+            </select>
+        </div>
+
+        <input type="hidden" name="porPagina" value="@Model.PorPagina" />
+
+        <button type="submit" class="btn-primary" style="padding:10px 16px;">
+            <i class="fa-solid fa-filter"></i> Filtrar
+        </button>
+
+        @if (!string.IsNullOrWhiteSpace(Model.Busqueda) || Model.EscenarioId.HasValue || Model.EstadoId.HasValue || !string.IsNullOrWhiteSpace(Model.Fecha))
+        {
+            <a asp-controller="Reservas" asp-action="Index" class="btn-secondary" style="padding:10px 14px;" title="Limpiar filtros">
+                <i class="fa-solid fa-xmark"></i> Limpiar
+            </a>
+        }
+    </div>
+</form>
+
+<!-- RESERVAS TABLE -->
+<div class="table-wrap">
+    <table class="dark-table">
+        <thead>
+            <tr>
+                <th style="width:60px;">#</th>
+                <th>Cliente</th>
+                <th>Cancha</th>
+                <th>Fecha y Horario</th>
+                <th>Total</th>
+                <th>Saldo</th>
+                <th>Estado</th>
+                <th style="text-align:center;width:140px;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!Model.Reservas.Any())
+            {
+                <tr>
+                    <td colspan="8" style="text-align:center;padding:50px;color:var(--text-secondary);">
+                        <i class="fa-regular fa-calendar-xmark" style="font-size:36px;display:block;margin-bottom:10px;color:var(--text-muted);"></i>
+                        No se encontraron reservas con los filtros aplicados.
+                    </td>
+                </tr>
+            }
+            @foreach (var r in Model.Reservas)
+            {
+                var estadoBadge = r.EstadoNombre switch
+                {
+                    "Confirmada" => "badge-green",
+                    "Pendiente" => "badge-orange",
+                    "Cancelada" => "badge-red",
+                    "Completada" => "badge-blue",
+                    _ => "badge-gray"
+                };
+
+                var pagoBadge = r.EstadoPago switch
+                {
+                    "Pagado" => "badge-green",
+                    "Abono parcial" => "badge-orange",
+                    _ => "badge-red"
+                };
+
+                <tr>
+                    <td style="color:var(--text-muted);font-weight:600;">#@r.ReservaId</td>
+                    <td>
+                        <div style="font-weight:600;color:var(--text);">@r.ClienteNombre</div>
+                        <div style="font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:5px;">
+                            <i class="fa-solid fa-phone" style="font-size:10px;"></i> @r.ClienteTelefono
+                            @if (r.TieneWhatsapp)
+                            {
+                                <i class="fa-brands fa-whatsapp" style="color:#25d366;font-size:13px;" title="WhatsApp"></i>
+                            }
+                        </div>
+                    </td>
+                    <td>
+                        <div style="font-weight:500;">@r.EscenarioNombre</div>
+                        <div style="font-size:11px;color:var(--accent);">@r.DeporteNombre</div>
+                    </td>
+                    <td>
+                        <div style="font-weight:600;">@r.FechaReserva.ToString("dd/MM/yyyy")</div>
+                        <div style="font-size:12px;color:var(--text-secondary);">
+                            @r.HoraInicio.ToString("HH:mm") - @r.HoraFin.ToString("HH:mm")
+                            <span style="color:var(--text-muted);">(@r.DuracionHoras h)</span>
+                        </div>
+                    </td>
+                    <td style="font-weight:600;">
+                        $@r.MontoTotal.ToString("N0")
+                    </td>
+                    <td>
+                        @if (r.SaldoPendiente <= 0)
+                        {
+                            <span class="badge badge-green"><i class="fa-solid fa-check" style="font-size:10px;margin-right:3px;"></i> Pagado</span>
+                        }
+                        else
+                        {
+                            <div>
+                                <span class="badge @pagoBadge">Debe $@r.SaldoPendiente.ToString("N0")</span>
+                            </div>
+                        }
+                    </td>
+                    <td>
+                        <span class="badge @estadoBadge">@r.EstadoNombre</span>
+                    </td>
+                    <td style="text-align:center;">
+                        <div style="display:inline-flex;gap:6px;align-items:center;">
+                            <!-- Detalle -->
+                            <button class="btn-icon" onclick="verDetalleReserva(@r.ReservaId)" title="Ver detalle">
+                                <i class="fa-regular fa-eye"></i>
+                            </button>
+
+                            <!-- Pagar / Abonar (si tiene saldo pendiente) -->
+                            @if (r.SaldoPendiente > 0 && r.EstadoId != 3)
+                            {
+                                <a asp-controller="Pagos" asp-action="Registrar" asp-route-reservaId="@r.ReservaId"
+                                   class="btn-icon" style="color:var(--green);" title="Registrar pago">
+                                    <i class="fa-solid fa-dollar-sign"></i>
+                                </a>
+                            }
+
+                            <!-- Cambiar Estado -->
+                            <div class="dropdown" style="position:relative;display:inline-block;">
+                                <button class="btn-icon" onclick="toggleMenuReserva(this)" title="Cambiar estado / Opciones">
+                                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                                </button>
+                                <div class="ctx-menu" style="display:none;position:absolute;right:0;top:100%;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;min-width:160px;z-index:50;padding:4px 0;box-shadow:0 8px 24px rgba(0,0,0,0.5);">
+                                    <button class="ctx-item" onclick="cambiarEstado(@r.ReservaId, 1)">
+                                        <i class="fa-solid fa-circle-check" style="color:var(--green);"></i> Confirmar
+                                    </button>
+                                    <button class="ctx-item" onclick="cambiarEstado(@r.ReservaId, 4)">
+                                        <i class="fa-solid fa-flag-checkered" style="color:var(--blue);"></i> Completar
+                                    </button>
+                                    <button class="ctx-item" onclick="cambiarEstado(@r.ReservaId, 3)">
+                                        <i class="fa-solid fa-ban" style="color:var(--red);"></i> Cancelar
+                                    </button>
+                                    <div style="border-top:1px solid var(--border);margin:4px 0;"></div>
+                                    <button class="ctx-item ctx-danger" onclick="confirmarEliminarReserva(@r.ReservaId)">
+                                        <i class="fa-solid fa-trash-can"></i> Eliminar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <!-- PAGINATION -->
+    <div class="pagination-bar">
+        <div class="pag-btns">
+            @{
+                var prev = Model.PaginaActual - 1;
+                var next = Model.PaginaActual + 1;
+            }
+            <a class="pag-btn @(Model.PaginaActual == 1 ? "disabled" : "")"
+               href="?busqueda=@Model.Busqueda&escenarioId=@Model.EscenarioId&estadoId=@Model.EstadoId&fecha=@Model.Fecha&pagina=@prev&porPagina=@Model.PorPagina"
+               @(Model.PaginaActual == 1 ? "aria-disabled=true" : "")>
+                <i class="fa-solid fa-chevron-left" style="font-size:11px;"></i>
+            </a>
+
+            @for (int p = 1; p <= Model.TotalPaginas; p++)
+            {
+                if (p == 1 || p == Model.TotalPaginas || Math.Abs(p - Model.PaginaActual) <= 1)
+                {
+                    <a class="pag-btn @(p == Model.PaginaActual ? "active" : "")"
+                       href="?busqueda=@Model.Busqueda&escenarioId=@Model.EscenarioId&estadoId=@Model.EstadoId&fecha=@Model.Fecha&pagina=@p&porPagina=@Model.PorPagina">@p</a>
+                }
+                else if (Math.Abs(p - Model.PaginaActual) == 2)
+                {
+                    <span class="pag-btn" style="cursor:default;pointer-events:none;">…</span>
+                }
+            }
+
+            <a class="pag-btn @(Model.PaginaActual == Model.TotalPaginas ? "disabled" : "")"
+               href="?busqueda=@Model.Busqueda&escenarioId=@Model.EscenarioId&estadoId=@Model.EstadoId&fecha=@Model.Fecha&pagina=@next&porPagina=@Model.PorPagina"
+               @(Model.PaginaActual == Model.TotalPaginas ? "aria-disabled=true" : "")>
+                <i class="fa-solid fa-chevron-right" style="font-size:11px;"></i>
+            </a>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:12px;color:var(--text-secondary);">Mostrando @Model.Reservas.Count de @Model.TotalRegistros reservas</span>
+            <form method="get" asp-controller="Reservas" asp-action="Index" style="display:inline;">
+                <input type="hidden" name="busqueda" value="@Model.Busqueda" />
+                <input type="hidden" name="escenarioId" value="@Model.EscenarioId" />
+                <input type="hidden" name="estadoId" value="@Model.EstadoId" />
+                <input type="hidden" name="fecha" value="@Model.Fecha" />
+                <input type="hidden" name="pagina" value="1" />
+                <select name="porPagina" class="select-dark" onchange="this.form.submit()">
+                    @foreach (var n in new[] { 6, 10, 20, 50 })
+                    {
+                        if (Model.PorPagina == n)
+                        {
+                            <option value="@n" selected>@n por página</option>
+                        }
+                        else
+                        {
+                            <option value="@n">@n por página</option>
+                        }
+                    }
+                </select>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- =============================================
+     MODAL NUEVA RESERVA
+     ============================================= -->
+<div id="modalNuevaReserva" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:16px;">
+    <div style="background:var(--bg-card);border-radius:14px;border:1px solid var(--border);width:100%;max-width:560px;max-height:92vh;overflow-y:auto;box-shadow:0 12px 36px rgba(0,0,0,0.6);">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 24px;border-bottom:1px solid var(--border);">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:36px;height:36px;border-radius:8px;background:rgba(240,180,41,0.15);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:16px;">
+                    <i class="fa-regular fa-calendar-plus"></i>
+                </div>
+                <div>
+                    <h3 style="font-size:16px;font-weight:700;">Nueva Reserva</h3>
+                    <div style="font-size:11px;color:var(--text-secondary);">Verifica disponibilidad y calcula tarifa automáticamente</div>
+                </div>
+            </div>
+            <button onclick="cerrarModalNuevaReserva()" style="background:none;border:none;color:var(--text-secondary);font-size:18px;cursor:pointer;">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <form id="formNuevaReserva" onsubmit="guardarNuevaReserva(event)" style="padding:22px 24px;">
+            @Html.AntiForgeryToken()
+
+            <!-- Cliente -->
+            <div class="form-group">
+                <label class="form-label">Cliente *</label>
+                <select id="nrClienteId" name="ClienteId" required class="form-control-dark">
+                    <option value="">-- Seleccione un cliente --</option>
+                    @foreach (var c in Model.Clientes)
+                    {
+                        <option value="@c.ClienteId">@c.NombreCompleto (@c.Telefono)</option>
+                    }
+                </select>
+            </div>
+
+            <!-- Cancha / Escenario -->
+            <div class="form-group">
+                <label class="form-label">Cancha Deportiva *</label>
+                <select id="nrEscenarioId" name="EscenarioId" required class="form-control-dark" onchange="actualizarCalculoPrecio()">
+                    <option value="">-- Seleccione una cancha --</option>
+                    @foreach (var e in Model.Escenarios)
+                    {
+                        <option value="@e.EscenarioId" data-precio="@e.PrecioPorHora">
+                            @e.Nombre — $@e.PrecioPorHora.ToString("N0")/h (@(e.Deporte?.Nombre ?? "Deporte"))
+                        </option>
+                    }
+                </select>
+            </div>
+
+            <!-- Fecha y Horas -->
+            <div class="form-row-3">
+                <div class="form-group">
+                    <label class="form-label">Fecha *</label>
+                    <input type="date" id="nrFecha" name="FechaReserva" required
+                           value="@DateTime.Today.ToString("yyyy-MM-dd")" class="form-control-dark" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Hora Inicio *</label>
+                    <input type="time" id="nrHoraInicio" name="HoraInicio" required
+                           value="18:00" class="form-control-dark" onchange="actualizarCalculoPrecio()" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Hora Fin *</label>
+                    <input type="time" id="nrHoraFin" name="HoraFin" required
+                           value="19:00" class="form-control-dark" onchange="actualizarCalculoPrecio()" />
+                </div>
+            </div>
+
+            <!-- Resumen de Tarifa Calculada -->
+            <div style="background:rgba(240,180,41,0.06);border:1px solid rgba(240,180,41,0.25);border-radius:10px;padding:12px 16px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;">
+                <div>
+                    <div style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Monto Estimado</div>
+                    <div style="font-size:12px;color:var(--text-secondary);" id="nrDuracionTexto">Duración: 1 hora</div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:22px;font-weight:800;color:var(--accent);" id="nrPrecioCalculado">$0</div>
+                    <input type="hidden" id="nrMontoTotal" name="MontoTotal" value="0" />
+                </div>
+            </div>
+
+            <!-- Abono inicial opcional -->
+            <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:18px;">
+                <label style="display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;cursor:pointer;">
+                    <input type="checkbox" id="nrRegistrarPago" name="RegistrarPagoInicial" value="true"
+                           onchange="toggleSeccionAbono(this.checked)" style="accent-color:var(--accent);width:16px;height:16px;" />
+                    <span>Registrar pago o abono inicial</span>
+                </label>
+
+                <div id="seccionAbono" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:14px;">
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label class="form-label">Monto a Pagar</label>
+                            <input type="number" id="nrMontoAbono" name="MontoAbono" class="form-control-dark" placeholder="0" min="0" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Método de Pago</label>
+                            <select id="nrMetodoPagoId" name="MetodoPagoId" class="form-control-dark">
+                                @foreach (var m in Model.MetodosPago)
+                                {
+                                    <option value="@m.MetodoPagoId">@m.Nombre</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label class="form-label">Referencia / Comprobante (Opcional)</label>
+                        <input type="text" name="ReferenciaPago" class="form-control-dark" placeholder="Ej: Transf. Nequi #12345" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notas -->
+            <div class="form-group">
+                <label class="form-label">Notas / Observaciones</label>
+                <textarea name="Notas" rows="2" class="form-control-dark" placeholder="Ej: Trae chalecos propios, partido de amigos..."></textarea>
+            </div>
+
+            <!-- Botones -->
+            <div style="display:flex;gap:12px;margin-top:22px;">
+                <button type="button" onclick="cerrarModalNuevaReserva()" class="btn-secondary" style="flex:1;">
+                    Cancelar
+                </button>
+                <button type="submit" id="btnSubmitReserva" class="btn-primary" style="flex:1;justify-content:center;">
+                    <i class="fa-solid fa-check"></i> Guardar reserva
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- =============================================
+     MODAL DETALLE RESERVA
+     ============================================= -->
+<div id="modalDetalleReserva" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:16px;">
+    <div style="background:var(--bg-card);border-radius:14px;border:1px solid var(--border);width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 12px 36px rgba(0,0,0,0.6);">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 24px;border-bottom:1px solid var(--border);">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:36px;height:36px;border-radius:8px;background:rgba(34,197,94,0.15);color:var(--green);display:flex;align-items:center;justify-content:center;font-size:16px;">
+                    <i class="fa-regular fa-clipboard"></i>
+                </div>
+                <div>
+                    <h3 style="font-size:16px;font-weight:700;" id="detTitulo">Detalle de Reserva</h3>
+                    <div style="font-size:11px;color:var(--text-secondary);" id="detSub">Cargando...</div>
+                </div>
+            </div>
+            <button onclick="cerrarModalDetalle()" style="background:none;border:none;color:var(--text-secondary);font-size:18px;cursor:pointer;">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div id="detContenido" style="padding:22px 24px;">
+            <div style="text-align:center;padding:40px;color:var(--text-secondary);">
+                <i class="fa-solid fa-spinner fa-spin" style="font-size:24px;"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<style>
+.ctx-item {
+    display:flex;align-items:center;gap:9px;
+    width:100%;padding:9px 14px;
+    background:none;border:none;
+    color:var(--text-secondary);font-size:13px;font-family:inherit;
+    cursor:pointer;text-align:left;transition:background 0.15s,color 0.15s;
+}
+.ctx-item:hover { background:rgba(255,255,255,0.05);color:var(--text); }
+.ctx-item.ctx-danger:hover { color:var(--red); }
+</style>
+
+<script>
+// Auto abrir modal si viene desde Quick Action o URL (?crear=true)
+document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('crear') === 'True' || params.get('crear') === 'true' || params.get('crear') === '1') {
+        abrirModalNuevaReserva();
+    }
+    actualizarCalculoPrecio();
+});
+
+function abrirModalNuevaReserva() {
+    document.getElementById('modalNuevaReserva').style.display = 'flex';
+    actualizarCalculoPrecio();
+}
+
+function cerrarModalNuevaReserva() {
+    document.getElementById('modalNuevaReserva').style.display = 'none';
+}
+
+function toggleSeccionAbono(mostrar) {
+    const seccion = document.getElementById('seccionAbono');
+    seccion.style.display = mostrar ? 'block' : 'none';
+    if (mostrar) {
+        const total = parseFloat(document.getElementById('nrMontoTotal').value) || 0;
+        document.getElementById('nrMontoAbono').value = total;
+    }
+}
+
+function actualizarCalculoPrecio() {
+    const selEsc = document.getElementById('nrEscenarioId');
+    const opt = selEsc.options[selEsc.selectedIndex];
+    const precioHora = opt ? parseFloat(opt.getAttribute('data-precio')) || 0 : 0;
+
+    const tIni = document.getElementById('nrHoraInicio').value;
+    const tFin = document.getElementById('nrHoraFin').value;
+
+    if (!tIni || !tFin) return;
+
+    const [h1, m1] = tIni.split(':').map(Number);
+    const [h2, m2] = tFin.split(':').map(Number);
+
+    const minutosIni = h1 * 60 + m1;
+    const minutosFin = h2 * 60 + m2;
+    const diffHoras = Math.max(0, (minutosFin - minutosIni) / 60);
+
+    const total = Math.round(diffHoras * precioHora);
+
+    document.getElementById('nrDuracionTexto').textContent = `Duración: ${diffHoras.toFixed(1)} horas`;
+    document.getElementById('nrPrecioCalculado').textContent = `$${total.toLocaleString('es-CO')}`;
+    document.getElementById('nrMontoTotal').value = total;
+
+    // Si abono está activo, sincronizar valor sugerido
+    const chkAbono = document.getElementById('nrRegistrarPago');
+    if (chkAbono && chkAbono.checked) {
+        document.getElementById('nrMontoAbono').value = total;
+    }
+}
+
+async function guardarNuevaReserva(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnSubmitReserva');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verificando...';
+
+    const form = document.getElementById('formNuevaReserva');
+    const formData = new FormData(form);
+
+    try {
+        const res = await fetch('/Reservas/Crear', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+
+        if (data.ok) {
+            await Swal.fire({
+                title: '¡Reserva Creada!',
+                text: data.msg,
+                icon: 'success',
+                confirmButtonColor: '#22c55e',
+                background: '#252830', color: '#fff'
+            });
+            window.location.href = '/Reservas';
+        } else {
+            Swal.fire({
+                title: 'Atención',
+                text: data.msg,
+                icon: 'warning',
+                confirmButtonColor: '#f0b429',
+                background: '#252830', color: '#fff'
+            });
+        }
+    } catch (err) {
+        Swal.fire({
+            title: 'Error',
+            text: 'Ocurrió un error al procesar la reserva.',
+            icon: 'error',
+            confirmButtonColor: '#ef4444',
+            background: '#252830', color: '#fff'
+        });
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> Guardar reserva';
+    }
+}
+
+function toggleMenuReserva(btn) {
+    document.querySelectorAll('.ctx-menu').forEach(m => {
+        if (m !== btn.nextElementSibling) m.style.display = 'none';
+    });
+    const menu = btn.nextElementSibling;
+    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+}
+
+document.addEventListener('click', e => {
+    if (!e.target.closest('.dropdown')) {
+        document.querySelectorAll('.ctx-menu').forEach(m => m.style.display = 'none');
+    }
+});
+
+async function cambiarEstado(id, nuevoEstado) {
+    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+    const formData = new FormData();
+    formData.append('id', id);
+    formData.append('nuevoEstadoId', nuevoEstado);
+    formData.append('__RequestVerificationToken', token);
+
+    const res = await fetch('/Reservas/CambiarEstado', {
+        method: 'POST',
+        body: formData
+    });
+    const data = await res.json();
+    if (data.ok) {
+        location.reload();
+    }
+}
+
+async function verDetalleReserva(id) {
+    const modal = document.getElementById('modalDetalleReserva');
+    const cont = document.getElementById('detContenido');
+    const sub = document.getElementById('detSub');
+    modal.style.display = 'flex';
+    sub.textContent = `Cargando reserva #${id}...`;
+
+    try {
+        const res = await fetch(`/Reservas/Detalle/${id}`);
+        const d = await res.json();
+
+        sub.textContent = `Reserva #${d.reservaId} — Registrada el ${d.fechaCreacion}`;
+
+        let pagosHtml = '';
+        if (d.pagos && d.pagos.length > 0) {
+            pagosHtml = d.pagos.map(p => `
+                <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;">
+                    <div>
+                        <span style="font-weight:600;color:var(--text);">$${p.monto.toLocaleString('es-CO')}</span>
+                        <span style="color:var(--text-secondary);">(${p.metodo})</span>
+                    </div>
+                    <div style="color:var(--text-muted);">${p.fecha} · Ref: ${p.referencia}</div>
+                </div>
+            `).join('');
+        } else {
+            pagosHtml = `<div style="color:var(--text-muted);font-size:12px;padding:8px 0;">No se han registrado pagos aún.</div>`;
+        }
+
+        cont.innerHTML = `
+            <div style="margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <span style="font-size:13px;color:var(--text-secondary);font-weight:600;text-transform:uppercase;">Información del Cliente</span>
+                    <span class="badge ${d.estadoNombre === 'Confirmada' ? 'badge-green' : (d.estadoNombre === 'Cancelada' ? 'badge-red' : 'badge-orange')}">${d.estadoNombre}</span>
+                </div>
+                <div style="font-size:16px;font-weight:700;">${d.cliente}</div>
+                <div style="font-size:13px;color:var(--text-secondary);">${d.telefono} ${d.tieneWhatsapp ? '· <i class="fa-brands fa-whatsapp" style="color:#25d366"></i>' : ''}</div>
+            </div>
+
+            <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                    <span style="color:var(--text-secondary);font-size:13px;">Cancha:</span>
+                    <span style="font-weight:600;">${d.escenario} (${d.deporte})</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                    <span style="color:var(--text-secondary);font-size:13px;">Fecha:</span>
+                    <span style="font-weight:600;">${d.fecha}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                    <span style="color:var(--text-secondary);font-size:13px;">Horario:</span>
+                    <span style="font-weight:600;">${d.horaInicio} - ${d.horaFin} (${d.duracionHoras}h)</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                    <span style="color:var(--text-secondary);font-size:13px;">Tarifa cancha:</span>
+                    <span style="font-weight:600;">$${d.precioPorHora.toLocaleString('es-CO')}/h</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:6px;">
+                    <span style="color:var(--text-secondary);font-size:13px;font-weight:600;">Valor Total:</span>
+                    <span style="font-weight:700;color:var(--accent);font-size:15px;">$${d.montoTotal.toLocaleString('es-CO')}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;">
+                    <span style="color:var(--text-secondary);font-size:13px;">Total Pagado:</span>
+                    <span style="font-weight:600;color:var(--green);">$${d.totalPagado.toLocaleString('es-CO')}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;">
+                    <span style="color:var(--text-secondary);font-size:13px;">Saldo Pendiente:</span>
+                    <span style="font-weight:700;color:${d.saldoPendiente > 0 ? 'var(--red)' : 'var(--green)'};">$${d.saldoPendiente.toLocaleString('es-CO')}</span>
+                </div>
+            </div>
+
+            <div style="margin-bottom:16px;">
+                <div style="font-size:12px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;margin-bottom:8px;">Historial de Pagos</div>
+                ${pagosHtml}
+            </div>
+
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:18px;">
+                <strong>Observaciones:</strong> ${d.notas}
+            </div>
+
+            <div style="display:flex;gap:10px;">
+                <button type="button" onclick="cerrarModalDetalle()" class="btn-secondary" style="flex:1;">Cerrar</button>
+                ${d.saldoPendiente > 0 && d.estadoId != 3 ? `
+                    <a href="/Pagos/Registrar?reservaId=${d.reservaId}" class="btn-primary" style="flex:1;justify-content:center;">
+                        <i class="fa-solid fa-dollar-sign"></i> Pagar saldo
+                    </a>
+                ` : ''}
+            </div>
+        `;
+    } catch (err) {
+        cont.innerHTML = `<div style="color:var(--red);text-align:center;">Error al cargar los detalles.</div>`;
+    }
+}
+
+function cerrarModalDetalle() {
+    document.getElementById('modalDetalleReserva').style.display = 'none';
+}
+
+async function confirmarEliminarReserva(id) {
+    const res = await Swal.fire({
+        title: '¿Eliminar / Cancelar Reserva?',
+        text: 'Si tiene pagos asociados, será marcada como Cancelada. ¿Deseas continuar?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#374151',
+        confirmButtonText: 'Sí, continuar',
+        cancelButtonText: 'Cancelar',
+        background: '#252830', color: '#fff'
+    });
+
+    if (!res.isConfirmed) return;
+
+    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+    const formData = new FormData();
+    formData.append('id', id);
+    formData.append('__RequestVerificationToken', token);
+
+    const resp = await fetch(`/Reservas/Eliminar/${id}`, {
+        method: 'POST',
+        body: formData
+    });
+    const data = await resp.json();
+
+    await Swal.fire({
+        title: data.ok ? 'Completado' : 'Aviso',
+        text: data.msg,
+        icon: data.ok ? 'success' : 'error',
+        confirmButtonColor: '#22c55e',
+        background: '#252830', color: '#fff'
+    });
+
+    location.reload();
+}
+</script>
+}
+

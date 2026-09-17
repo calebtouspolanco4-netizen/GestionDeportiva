@@ -1,0 +1,184 @@
+@model GestionDeportiva.ViewModels.ReportesViewModel
+@{
+    ViewData["Title"] = "Reportes";
+    var labelsJson   = Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.LabelsGrafica));
+    var datosJson    = Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.DatosGrafica));
+    var escNombres   = Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.NombresEscenarios));
+    var escDatos     = Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.IngresosPorEscenario));
+    var escColores   = Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ColoresEscenarios));
+}
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Reportes</h1>
+        <p class="page-subtitle">Analiza el rendimiento de tu negocio</p>
+    </div>
+    <button class="btn-secondary">
+        <i class="fa-solid fa-download"></i> Exportar
+    </button>
+</div>
+
+<!-- TOP GRID: KPIs + Line chart -->
+<div class="reports-top-grid">
+    <!-- KPI cards left -->
+    <div class="rpt-big-kpis">
+        <div class="rpt-big-card">
+            <div class="rpt-big-label">Ingresos totales</div>
+            <div class="rpt-big-value">$@Model.IngresosTotales.ToString("N0")</div>
+            <div class="metric-change @(Model.PorcentajeCambioIngresos >= 0 ? "change-up" : "change-down")">
+                <i class="fa-solid @(Model.PorcentajeCambioIngresos >= 0 ? "fa-arrow-up" : "fa-arrow-down")"></i>
+                @Math.Abs(Model.PorcentajeCambioIngresos)% vs periodo anterior
+            </div>
+        </div>
+        <div class="rpt-big-card">
+            <div class="rpt-big-label">Reservas totales</div>
+            <div class="rpt-big-value">@Model.ReservasTotales</div>
+            <div class="metric-change @(Model.PorcentajeCambioReservas >= 0 ? "change-up" : "change-down")">
+                <i class="fa-solid @(Model.PorcentajeCambioReservas >= 0 ? "fa-arrow-up" : "fa-arrow-down")"></i>
+                @Math.Abs(Model.PorcentajeCambioReservas)% vs periodo anterior
+            </div>
+        </div>
+    </div>
+
+    <!-- Line chart right -->
+    <div class="chart-card">
+        <div class="chart-card-title">Ingresos por día</div>
+        <div class="chart-canvas-wrap">
+            <canvas id="lineChartTop"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- MIDDLE: Large line + Donut -->
+<div class="reports-charts-grid">
+    <div class="chart-card">
+        <div class="chart-card-title">Ingresos por día</div>
+        <div class="chart-canvas-wrap">
+            <canvas id="lineChartBig"></canvas>
+        </div>
+    </div>
+
+    <div class="chart-card">
+        <div class="chart-card-title">Ingresos por cancha</div>
+        <div class="donut-layout">
+            <div class="donut-canvas-wrap">
+                <canvas id="donutChart"></canvas>
+                <div class="donut-center-label">
+                    <span class="donut-center-num">$@(Model.IngresosTotales.ToString("N0"))</span>
+                    <span class="donut-center-text">Total</span>
+                </div>
+            </div>
+            <div class="donut-legend" id="donutLegend"></div>
+        </div>
+    </div>
+</div>
+
+<!-- BOTTOM KPIs -->
+<div class="reports-kpi-row">
+    <div class="rpt-kpi">
+        <div class="rpt-kpi-icon yellow"><i class="fa-regular fa-calendar-check"></i></div>
+        <div>
+            <div class="rpt-kpi-label">Ocupación promedio</div>
+            <div class="rpt-kpi-value">@Model.OcupacionPromedio%</div>
+        </div>
+    </div>
+    <div class="rpt-kpi">
+        <div class="rpt-kpi-icon blue"><i class="fa-regular fa-calendar"></i></div>
+        <div>
+            <div class="rpt-kpi-label">Ticket promedio</div>
+            <div class="rpt-kpi-value">$@Model.TicketPromedio.ToString("N0")</div>
+        </div>
+    </div>
+    <div class="rpt-kpi">
+        <div class="rpt-kpi-icon green"><i class="fa-solid fa-user-plus"></i></div>
+        <div>
+            <div class="rpt-kpi-label">Clientes nuevos</div>
+            <div class="rpt-kpi-value">@Model.ClientesNuevos</div>
+            <div class="rpt-kpi-change change-up">+@Model.PorcentajeCambioClientes%</div>
+        </div>
+    </div>
+    <div class="rpt-kpi">
+        <div class="rpt-kpi-icon red"><i class="fa-solid fa-circle-xmark"></i></div>
+        <div>
+            <div class="rpt-kpi-label">Cancelaciones</div>
+            <div class="rpt-kpi-value">@Model.Cancelaciones</div>
+            <div class="rpt-kpi-change change-down">@Model.PorcentajeCambioCancelaciones%</div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+const labels  = @labelsJson;
+const datos   = @datosJson;
+const escNom  = @escNombres;
+const escDat  = @escDatos;
+const escCol  = @escColores;
+
+const lineConf = (ctx, small) => new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels,
+        datasets: [{
+            data: datos,
+            borderColor: '#f0b429',
+            backgroundColor: (c) => {
+                const g = c.chart.ctx.createLinearGradient(0, 0, 0, small ? 120 : 220);
+                g.addColorStop(0, 'rgba(240,180,41,0.35)');
+                g.addColorStop(1, 'rgba(240,180,41,0)');
+                return g;
+            },
+            borderWidth: 2,
+            pointRadius: small ? 2 : 3,
+            pointBackgroundColor: '#f0b429',
+            fill: true,
+            tension: 0.4
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: {
+            callbacks: { label: (c) => ` $${Number(c.raw).toLocaleString('es-CO')}` }
+        }},
+        scales: {
+            x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6b7280', maxRotation: 0, font: { size: 10 } } },
+            y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6b7280', font: { size: 10 },
+                    callback: v => `$${Number(v/1000).toFixed(0)}K` } }
+        }
+    }
+});
+
+lineConf(document.getElementById('lineChartTop'), true);
+lineConf(document.getElementById('lineChartBig'), false);
+
+// Donut chart
+new Chart(document.getElementById('donutChart'), {
+    type: 'doughnut',
+    data: {
+        labels: escNom,
+        datasets: [{ data: escDat, backgroundColor: escCol, borderWidth: 0, hoverOffset: 5 }]
+    },
+    options: {
+        cutout: '68%',
+        plugins: { legend: { display: false }, tooltip: {
+            callbacks: { label: (c) => ` $${Number(c.raw).toLocaleString('es-CO')}` }
+        }},
+        animation: { duration: 900 }
+    }
+});
+
+// Build donut legend
+const legendEl = document.getElementById('donutLegend');
+const total = escDat.reduce((a, b) => a + b, 0) || 1;
+escNom.forEach((n, i) => {
+    const pct = Math.round(escDat[i] / total * 100);
+    legendEl.innerHTML += `
+        <div class="donut-legend-item">
+            <div class="donut-legend-dot" style="background:${escCol[i]}"></div>
+            <span>${n}: <strong>$${Number(escDat[i]).toLocaleString('es-CO')}</strong> (${pct}%)</span>
+        </div>`;
+});
+</script>
+}

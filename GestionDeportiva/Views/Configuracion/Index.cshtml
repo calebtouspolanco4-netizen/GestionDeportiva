@@ -1,0 +1,534 @@
+@model GestionDeportiva.ViewModels.ConfiguracionViewModel
+@{
+    ViewData["Title"] = "Configuración";
+}
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Configuración del Sistema</h1>
+        <p class="page-subtitle">Administra los parámetros generales del establecimiento, deportes, tarifas y caja</p>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.MensajeExito))
+{
+    <div style="background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);color:#4ade80;border-radius:10px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:10px;">
+        <i class="fa-solid fa-circle-check"></i>
+        <span>@Model.MensajeExito</span>
+    </div>
+}
+
+@if (!string.IsNullOrWhiteSpace(Model.MensajeError))
+{
+    <div style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:10px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:10px;">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        <span>@Model.MensajeError</span>
+    </div>
+}
+
+<!-- TABS NAVIGATION -->
+<div class="config-nav">
+    <button type="button" class="config-tab-btn @(Model.ActiveTab == "establecimiento" ? "active" : "")" onclick="cambiarTab('establecimiento')">
+        <i class="fa-solid fa-building"></i> Establecimiento
+    </button>
+    <button type="button" class="config-tab-btn @(Model.ActiveTab == "deportes" ? "active" : "")" onclick="cambiarTab('deportes')">
+        <i class="fa-solid fa-futbol"></i> Tipos de Deporte
+    </button>
+    <button type="button" class="config-tab-btn @(Model.ActiveTab == "metodos" ? "active" : "")" onclick="cambiarTab('metodos')">
+        <i class="fa-solid fa-credit-card"></i> Métodos de Pago
+    </button>
+    <button type="button" class="config-tab-btn @(Model.ActiveTab == "tarifas" ? "active" : "")" onclick="cambiarTab('tarifas')">
+        <i class="fa-solid fa-tags"></i> Tarifas Especiales
+    </button>
+    <button type="button" class="config-tab-btn @(Model.ActiveTab == "caja" ? "active" : "")" onclick="cambiarTab('caja')">
+        <i class="fa-solid fa-cash-register"></i> Caja y Turnos
+    </button>
+</div>
+
+<!-- =============================================
+     TAB 1: ESTABLECIMIENTO
+     ============================================= -->
+<div id="tab-establecimiento" class="tab-pane" style="display:@(Model.ActiveTab == "establecimiento" ? "block" : "none");">
+    <div class="card" style="max-width:700px;">
+        <div class="card-title" style="display:flex;align-items:center;gap:9px;margin-bottom:20px;">
+            <i class="fa-solid fa-store" style="color:var(--accent);"></i>
+            <span>Datos Principales del Establecimiento</span>
+        </div>
+
+        <form method="post" asp-controller="Configuracion" asp-action="GuardarEstablecimiento">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="EstablecimientoId" value="@Model.Establecimiento.EstablecimientoId" />
+
+            <div class="form-group">
+                <label class="form-label">Nombre del Negocio / Sede *</label>
+                <input type="text" name="Nombre" value="@Model.Establecimiento.Nombre" required class="form-control-dark" />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Dirección *</label>
+                <input type="text" name="Direccion" value="@Model.Establecimiento.Direccion" required class="form-control-dark" />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Teléfono de Contacto</label>
+                <input type="text" name="Telefono" value="@Model.Establecimiento.Telefono" class="form-control-dark" />
+            </div>
+
+            <div class="form-group" style="margin-bottom:24px;">
+                <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;">
+                    <input type="checkbox" name="Activo" value="true" @(Model.Establecimiento.Activo == true ? "checked" : "")
+                           style="accent-color:var(--accent);width:16px;height:16px;" />
+                    <span>Establecimiento Activo y Operando</span>
+                </label>
+            </div>
+
+            <button type="submit" class="btn-primary">
+                <i class="fa-solid fa-floppy-disk"></i> Guardar cambios
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- =============================================
+     TAB 2: DEPORTES
+     ============================================= -->
+<div id="tab-deportes" class="tab-pane" style="display:@(Model.ActiveTab == "deportes" ? "block" : "none");">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+        <div>
+            <h3 style="font-size:16px;font-weight:600;">Catálogo de Deportes</h3>
+            <p style="font-size:12px;color:var(--text-secondary);">Disciplinas configuradas para los escenarios</p>
+        </div>
+        <button class="btn-primary" onclick="abrirModalNuevoDeporte()">
+            <i class="fa-solid fa-plus"></i> Nuevo deporte
+        </button>
+    </div>
+
+    <div class="table-wrap">
+        <table class="dark-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Nombre de Disciplina</th>
+                    <th>Jugadores por Equipo</th>
+                    <th>Canchas Asociadas</th>
+                    <th style="text-align:center;width:100px;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var d in Model.Deportes)
+                {
+                    <tr>
+                        <td style="color:var(--text-muted);font-weight:600;">@d.DeporteId</td>
+                        <td style="font-weight:600;">
+                            <i class="fa-solid fa-futbol" style="color:var(--accent);margin-right:7px;"></i> @d.Nombre
+                        </td>
+                        <td>@(d.JugadoresPorEquipo ?? 5) jugadores</td>
+                        <td>
+                            <span class="badge badge-blue">@d.TotalEscenarios canchas</span>
+                        </td>
+                        <td style="text-align:center;">
+                            @if (d.TotalEscenarios == 0)
+                            {
+                                <form method="post" asp-controller="Configuracion" asp-action="EliminarDeporte" asp-route-id="@d.DeporteId" style="display:inline;"
+                                      onsubmit="return confirm('¿Eliminar este deporte?');">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn-icon" title="Eliminar deporte">
+                                        <i class="fa-solid fa-trash-can" style="color:var(--red);font-size:12px;"></i>
+                                    </button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span style="font-size:11px;color:var(--text-muted);" title="Tiene canchas asociadas">En uso</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- =============================================
+     TAB 3: MÉTODOS DE PAGO
+     ============================================= -->
+<div id="tab-metodos" class="tab-pane" style="display:@(Model.ActiveTab == "metodos" ? "block" : "none");">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+        <div>
+            <h3 style="font-size:16px;font-weight:600;">Métodos de Pago Habilitados</h3>
+            <p style="font-size:12px;color:var(--text-secondary);">Canales de recepción de dinero en el sistema</p>
+        </div>
+        <button class="btn-primary" onclick="abrirModalNuevoMetodo()">
+            <i class="fa-solid fa-plus"></i> Nuevo método
+        </button>
+    </div>
+
+    <div class="table-wrap">
+        <table class="dark-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Método de Pago</th>
+                    <th>Pagos Registrados</th>
+                    <th style="text-align:center;width:100px;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var m in Model.MetodosPago)
+                {
+                    <tr>
+                        <td style="color:var(--text-muted);font-weight:600;">@m.MetodoPagoId</td>
+                        <td style="font-weight:600;">
+                            <i class="fa-solid fa-wallet" style="color:var(--green);margin-right:7px;"></i> @m.Nombre
+                        </td>
+                        <td>
+                            <span class="badge badge-purple">@m.TotalPagosRegistrados transacciones</span>
+                        </td>
+                        <td style="text-align:center;">
+                            @if (m.TotalPagosRegistrados == 0)
+                            {
+                                <form method="post" asp-controller="Configuracion" asp-action="EliminarMetodoPago" asp-route-id="@m.MetodoPagoId" style="display:inline;"
+                                      onsubmit="return confirm('¿Eliminar este método de pago?');">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn-icon" title="Eliminar método">
+                                        <i class="fa-solid fa-trash-can" style="color:var(--red);font-size:12px;"></i>
+                                    </button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span style="font-size:11px;color:var(--text-muted);">En uso</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- =============================================
+     TAB 4: TARIFAS ESPECIALES
+     ============================================= -->
+<div id="tab-tarifas" class="tab-pane" style="display:@(Model.ActiveTab == "tarifas" ? "block" : "none");">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+        <div>
+            <h3 style="font-size:16px;font-weight:600;">Tarifas Especiales por Cancha</h3>
+            <p style="font-size:12px;color:var(--text-secondary);">Precios por hora para fines de semana, festivos o franjas pico</p>
+        </div>
+        <button class="btn-primary" onclick="abrirModalNuevaTarifa()">
+            <i class="fa-solid fa-plus"></i> Nueva tarifa especial
+        </button>
+    </div>
+
+    <div class="table-wrap">
+        <table class="dark-table">
+            <thead>
+                <tr>
+                    <th>Cancha</th>
+                    <th>Día de Aplicación</th>
+                    <th>Franja Horaria</th>
+                    <th>Tarifa por Hora</th>
+                    <th style="text-align:center;width:100px;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.TarifasEspeciales.Any())
+                {
+                    <tr>
+                        <td colspan="5" style="text-align:center;padding:40px;color:var(--text-secondary);">
+                            No hay tarifas especiales registradas.
+                        </td>
+                    </tr>
+                }
+                @foreach (var t in Model.TarifasEspeciales)
+                {
+                    <tr>
+                        <td style="font-weight:600;">@t.EscenarioNombre</td>
+                        <td>
+                            <span class="badge badge-orange">@t.DiaSemanaNombre</span>
+                            @if (t.EsFestivo == true)
+                            {
+                                <span class="badge badge-purple" style="margin-left:4px;">Festivo</span>
+                            }
+                        </td>
+                        <td>@t.HoraInicio.ToString("HH:mm") a @t.HoraFin.ToString("HH:mm")</td>
+                        <td style="font-weight:700;color:var(--accent);">$@t.PrecioHora.ToString("N0")/h</td>
+                        <td style="text-align:center;">
+                            <form method="post" asp-controller="Configuracion" asp-action="EliminarTarifaEspecial" asp-route-id="@t.TarifaId" style="display:inline;"
+                                  onsubmit="return confirm('¿Eliminar esta tarifa especial?');">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn-icon" title="Eliminar tarifa">
+                                    <i class="fa-solid fa-trash-can" style="color:var(--red);font-size:12px;"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- =============================================
+     TAB 5: CAJA Y TURNOS
+     ============================================= -->
+<div id="tab-caja" class="tab-pane" style="display:@(Model.ActiveTab == "caja" ? "block" : "none");">
+    <div style="display:grid;grid-template-columns:360px 1fr;gap:20px;">
+        <!-- Control de Turno Activo -->
+        <div class="card">
+            <div class="card-title" style="display:flex;align-items:center;gap:8px;">
+                <i class="fa-solid fa-cash-register" style="color:var(--accent);"></i>
+                <span>Estado de Caja Actual</span>
+            </div>
+
+            @if (Model.TurnoActivo != null)
+            {
+                <div style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);border-radius:10px;padding:16px;margin-bottom:16px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                        <span style="font-size:12px;color:var(--text-secondary);">Estado del turno:</span>
+                        <span class="badge badge-green">Abierto</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                        <span style="font-size:12px;color:var(--text-secondary);">Apertura:</span>
+                        <span style="font-weight:600;font-size:13px;">@Model.TurnoActivo.FechaApertura?.ToString("dd/MM/yyyy hh:mm tt")</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-size:12px;color:var(--text-secondary);">Base inicial:</span>
+                        <span style="font-weight:700;color:var(--accent);font-size:15px;">$@Model.TurnoActivo.MontoInicial.ToString("N0")</span>
+                    </div>
+                </div>
+
+                <!-- Formulario Cerrar Turno -->
+                <form method="post" asp-controller="Configuracion" asp-action="CerrarTurno" onsubmit="return confirm('¿Confirmar cierre y arqueo de caja?');">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="turnoId" value="@Model.TurnoActivo.TurnoId" />
+
+                    <div class="form-group">
+                        <label class="form-label">Monto Real en Caja ($) *</label>
+                        <input type="number" name="montoReal" required min="0" class="form-control-dark" placeholder="Total contado en efectivo" />
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Observaciones de Cierre</label>
+                        <textarea name="observaciones" rows="2" class="form-control-dark" placeholder="Comentarios del arqueo..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn-primary" style="width:100%;justify-content:center;background:var(--red);">
+                        <i class="fa-solid fa-lock"></i> Cerrar Turno de Caja
+                    </button>
+                </form>
+            }
+            else
+            {
+                <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);border-radius:10px;padding:16px;margin-bottom:20px;text-align:center;">
+                    <div class="badge badge-red" style="margin-bottom:8px;">Caja Cerrada</div>
+                    <div style="font-size:13px;color:var(--text-secondary);">No hay un turno de caja abierto actualmente.</div>
+                </div>
+
+                <!-- Formulario Abrir Turno -->
+                <form method="post" asp-controller="Configuracion" asp-action="AbrirTurno">
+                    @Html.AntiForgeryToken()
+                    <div class="form-group">
+                        <label class="form-label">Monto Inicial en Caja ($) *</label>
+                        <input type="number" name="montoInicial" required min="0" value="100000" class="form-control-dark" placeholder="Base de dinero" />
+                    </div>
+
+                    <button type="submit" class="btn-primary" style="width:100%;justify-content:center;">
+                        <i class="fa-solid fa-lock-open"></i> Abrir Turno de Caja
+                    </button>
+                </form>
+            }
+        </div>
+
+        <!-- Historial de Turnos -->
+        <div class="card">
+            <div class="card-title">Historial Reciente de Turnos</div>
+            <div class="table-wrap">
+                <table class="dark-table">
+                    <thead>
+                        <tr>
+                            <th>Turno #</th>
+                            <th>Apertura</th>
+                            <th>Cierre</th>
+                            <th>Base Inicial</th>
+                            <th>Monto Real</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!Model.HistorialTurnos.Any())
+                        {
+                            <tr>
+                                <td colspan="6" style="text-align:center;padding:30px;color:var(--text-secondary);">
+                                    Sin registros de turnos de caja.
+                                </td>
+                            </tr>
+                        }
+                        @foreach (var tk in Model.HistorialTurnos)
+                        {
+                            <tr>
+                                <td style="font-weight:700;">#@tk.TurnoId</td>
+                                <td style="font-size:12px;">@tk.FechaApertura?.ToString("dd/MM/yyyy hh:mm tt")</td>
+                                <td style="font-size:12px;">@(tk.FechaCierre?.ToString("dd/MM/yyyy hh:mm tt") ?? "En curso")</td>
+                                <td>$@tk.MontoInicial.ToString("N0")</td>
+                                <td style="font-weight:600;color:var(--green);">$@(tk.MontoReal?.ToString("N0") ?? "—")</td>
+                                <td>
+                                    <span class="badge @(tk.Estado == "Abierto" ? "badge-green" : "badge-gray")">@tk.Estado</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- =============================================
+     MODAL NUEVO DEPORTE
+     ============================================= -->
+<div id="modalNuevoDeporte" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:16px;">
+    <div style="background:var(--bg-card);border-radius:14px;border:1px solid var(--border);width:100%;max-width:440px;box-shadow:0 12px 36px rgba(0,0,0,0.6);">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border);">
+            <h3 style="font-size:16px;font-weight:600;">Nuevo Tipo de Deporte</h3>
+            <button onclick="cerrarModalNuevoDeporte()" style="background:none;border:none;color:var(--text-secondary);font-size:18px;cursor:pointer;">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <form method="post" asp-controller="Configuracion" asp-action="CrearDeporte" style="padding:22px;">
+            @Html.AntiForgeryToken()
+            <div class="form-group">
+                <label class="form-label">Nombre del Deporte *</label>
+                <input type="text" name="nombre" required placeholder="Ej: Pádel / Voleibol" class="form-control-dark" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Jugadores por Equipo</label>
+                <input type="number" name="jugadores" value="5" min="1" max="50" class="form-control-dark" />
+            </div>
+            <div style="display:flex;gap:10px;margin-top:20px;">
+                <button type="button" onclick="cerrarModalNuevoDeporte()" class="btn-secondary" style="flex:1;">Cancelar</button>
+                <button type="submit" class="btn-primary" style="flex:1;justify-content:center;">Guardar deporte</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- =============================================
+     MODAL NUEVO MÉTODO DE PAGO
+     ============================================= -->
+<div id="modalNuevoMetodo" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:16px;">
+    <div style="background:var(--bg-card);border-radius:14px;border:1px solid var(--border);width:100%;max-width:440px;box-shadow:0 12px 36px rgba(0,0,0,0.6);">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border);">
+            <h3 style="font-size:16px;font-weight:600;">Nuevo Método de Pago</h3>
+            <button onclick="cerrarModalNuevoMetodo()" style="background:none;border:none;color:var(--text-secondary);font-size:18px;cursor:pointer;">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <form method="post" asp-controller="Configuracion" asp-action="CrearMetodoPago" style="padding:22px;">
+            @Html.AntiForgeryToken()
+            <div class="form-group">
+                <label class="form-label">Nombre del Método *</label>
+                <input type="text" name="nombre" required placeholder="Ej: Bre-B / PSE / Dale!" class="form-control-dark" />
+            </div>
+            <div style="display:flex;gap:10px;margin-top:20px;">
+                <button type="button" onclick="cerrarModalNuevoMetodo()" class="btn-secondary" style="flex:1;">Cancelar</button>
+                <button type="submit" class="btn-primary" style="flex:1;justify-content:center;">Guardar método</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- =============================================
+     MODAL NUEVA TARIFA ESPECIAL
+     ============================================= -->
+<div id="modalNuevaTarifa" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:16px;">
+    <div style="background:var(--bg-card);border-radius:14px;border:1px solid var(--border);width:100%;max-width:480px;box-shadow:0 12px 36px rgba(0,0,0,0.6);">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border);">
+            <h3 style="font-size:16px;font-weight:600;">Nueva Tarifa Especial</h3>
+            <button onclick="cerrarModalNuevaTarifa()" style="background:none;border:none;color:var(--text-secondary);font-size:18px;cursor:pointer;">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <form method="post" asp-controller="Configuracion" asp-action="CrearTarifaEspecial" style="padding:22px;">
+            @Html.AntiForgeryToken()
+            <div class="form-group">
+                <label class="form-label">Cancha / Escenario *</label>
+                <select name="escenarioId" required class="form-control-dark">
+                    @foreach (var esc in Model.Escenarios)
+                    {
+                        <option value="@esc.EscenarioId">@esc.Nombre</option>
+                    }
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Día de la Semana *</label>
+                <select name="diaSemana" required class="form-control-dark">
+                    <option value="6">Sábado</option>
+                    <option value="0">Domingo</option>
+                    <option value="5">Viernes</option>
+                    <option value="1">Lunes</option>
+                    <option value="2">Martes</option>
+                    <option value="3">Miércoles</option>
+                    <option value="4">Jueves</option>
+                </select>
+            </div>
+            <div class="form-row-2">
+                <div class="form-group">
+                    <label class="form-label">Hora Inicio *</label>
+                    <input type="time" name="horaInicio" value="08:00" required class="form-control-dark" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Hora Fin *</label>
+                    <input type="time" name="horaFin" value="22:00" required class="form-control-dark" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Tarifa por Hora ($) *</label>
+                <input type="number" name="precioHora" required min="1" placeholder="Ej: 85000" class="form-control-dark" />
+            </div>
+            <div class="form-group">
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+                    <input type="checkbox" name="esFestivo" value="true" style="accent-color:var(--accent);" />
+                    <span>Aplica también para días festivos</span>
+                </label>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:20px;">
+                <button type="button" onclick="cerrarModalNuevaTarifa()" class="btn-secondary" style="flex:1;">Cancelar</button>
+                <button type="submit" class="btn-primary" style="flex:1;justify-content:center;">Guardar tarifa</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function cambiarTab(tab) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.style.display = 'none');
+    document.querySelectorAll('.config-tab-btn').forEach(b => b.classList.remove('active'));
+
+    const activePane = document.getElementById(`tab-${tab}`);
+    if (activePane) activePane.style.display = 'block';
+
+    const activeBtn = Array.from(document.querySelectorAll('.config-tab-btn'))
+        .find(b => b.getAttribute('onclick')?.includes(tab));
+    if (activeBtn) activeBtn.classList.add('active');
+
+    // Actualizar URL sin recargar
+    const url = new URL(window.location);
+    url.searchParams.set('tab', tab);
+    window.history.replaceState({}, '', url);
+}
+
+function abrirModalNuevoDeporte() { document.getElementById('modalNuevoDeporte').style.display = 'flex'; }
+function cerrarModalNuevoDeporte() { document.getElementById('modalNuevoDeporte').style.display = 'none'; }
+
+function abrirModalNuevoMetodo() { document.getElementById('modalNuevoMetodo').style.display = 'flex'; }
+function cerrarModalNuevoMetodo() { document.getElementById('modalNuevoMetodo').style.display = 'none'; }
+
+function abrirModalNuevaTarifa() { document.getElementById('modalNuevaTarifa').style.display = 'flex'; }
+function cerrarModalNuevaTarifa() { document.getElementById('modalNuevaTarifa').style.display = 'none'; }
+</script>
+}
+

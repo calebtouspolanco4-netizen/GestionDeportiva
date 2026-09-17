@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] — La Jugada</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+    <div class="app-wrapper">
+
+        <!-- ===== SIDEBAR ===== -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo-icon">
+                    <i class="fa-solid fa-futbol" style="color:#1a1d24;font-size:22px;"></i>
+                </div>
+                <div>
+                    <div class="sidebar-brand-name">LA JUGADA</div>
+                    <div class="sidebar-brand-sub">Canchas Sintéticas</div>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                @{
+                    var ctrl = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+                }
+                <a asp-controller="Home" asp-action="Index"
+                   class="nav-item @(ctrl == "Home" ? "active" : "")">
+                    <i class="fa-solid fa-house"></i>
+                    <span>Inicio</span>
+                </a>
+                <a asp-controller="Reservas" asp-action="Index"
+                   class="nav-item @(ctrl == "Reservas" ? "active" : "")">
+                    <i class="fa-solid fa-calendar-check"></i>
+                    <span>Reservas</span>
+                </a>
+                <a asp-controller="Calendario" asp-action="Index"
+                   class="nav-item @(ctrl == "Calendario" ? "active" : "")">
+                    <i class="fa-solid fa-calendar-days"></i>
+                    <span>Calendario</span>
+                </a>
+                <a asp-controller="Escenarios" asp-action="Index"
+                   class="nav-item @(ctrl == "Escenarios" ? "active" : "")">
+                    <i class="fa-solid fa-table-cells-large"></i>
+                    <span>Escenarios</span>
+                </a>
+                <a asp-controller="Clientes" asp-action="Index"
+                   class="nav-item @(ctrl == "Clientes" ? "active" : "")">
+                    <i class="fa-solid fa-users"></i>
+                    <span>Clientes</span>
+                </a>
+                <a asp-controller="Pagos" asp-action="Index"
+                   class="nav-item @(ctrl == "Pagos" ? "active" : "")">
+                    <i class="fa-solid fa-sack-dollar"></i>
+                    <span>Pagos</span>
+                </a>
+                <a asp-controller="Reportes" asp-action="Index"
+                   class="nav-item @(ctrl == "Reportes" ? "active" : "")">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <span>Reportes</span>
+                </a>
+                <a asp-controller="Configuracion" asp-action="Index"
+                   class="nav-item @(ctrl == "Configuracion" ? "active" : "")">
+                    <i class="fa-solid fa-gear"></i>
+                    <span>Configuración</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="footer-brand">
+                    <div class="footer-logo-icon">
+                        <i class="fa-solid fa-futbol" style="color:#1a1d24;"></i>
+                    </div>
+                    <div>
+                        <div class="footer-brand-name">LA JUGADA</div>
+                        <div class="footer-brand-sub">Canchas Sintéticas</div>
+                    </div>
+                </div>
+                <div class="footer-user">
+                    <div class="user-avatar">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                    <div>
+                        <div class="user-name">Administrador</div>
+                        <div class="user-email">admin@lajugada.com</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ===== MAIN CONTENT ===== -->
+        <main class="main-content">
+            @RenderBody()
+        </main>
+
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
